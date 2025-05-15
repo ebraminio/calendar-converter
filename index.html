@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="color-scheme" content="light dark">
+    <title>مبدل</title>
+</head>
+<body>
+    <fieldset id="shamsi">
+        <legend>شمسی</legend>
+        <label for="day">روز: </label><input type="number" name="day"><br>
+        <label for="month">ماه: </label><select name="month">
+            <option value="1">فروردین / ۱</option>
+            <option value="2">اردیبهشت / ۲</option>
+            <option value="3">خرداد / ۳</option>
+            <option value="4">تیر / ۴</option>
+            <option value="5">مرداد / ۵</option>
+            <option value="6">شهریور / ۶</option>
+            <option value="7">مهر / ۷</option>
+            <option value="8">آبان / ۸</option>
+            <option value="9">آذر / ۹</option>
+            <option value="10">دی / ۱۰</option>
+            <option value="11">بهمن / ۱۱</option>
+            <option value="12">اسفند / ۱۲</option>
+        </select><br>
+        <label for="year">سال: </label><input type="number" name="year"><br>
+    </fieldset>
+    <fieldset id="gregorian">
+        <legend>میلادی</legend>
+        <label for="day">روز: </label><input type="number" name="day"><br>
+        <label for="month">ماه: </label><select name="month">
+            <option value="1">January / 1</option>
+            <option value="2">February / 2</option>
+            <option value="3">March / 3</option>
+            <option value="4">April / 4</option>
+            <option value="5">May / 5</option>
+            <option value="6">June / 6</option>
+            <option value="7">July / 7</option>
+            <option value="8">August / 8</option>
+            <option value="9">September / 9</option>
+            <option value="10">October / 10</option>
+            <option value="11">November / 11</option>
+            <option value="12">December / 12</option>
+        </select><br>
+        <label for="year">سال: </label><input type="number" name="year"><br>
+    </fieldset>
+    <fieldset id="qamari">
+        <legend>قمری (ایران)</legend>
+        <label for="day">روز: </label><input type="number" name="day"><br>
+        <label for="month">ماه: </label><select name="month">
+            <option value="1">محرم / ١</option>
+            <option value="2">صفر / ٢</option>
+            <option value="3">ربيع الأول / ٣</option>
+            <option value="4">ربيع الآخر / ٤</option>
+            <option value="5">جمادى الأولى / ٥</option>
+            <option value="6">جمادى الآخرة / ٦</option>
+            <option value="7">رجب / ٧</option>
+            <option value="8">شعبان / ٨</option>
+            <option value="9">رمضان / ٩</option>
+            <option value="10">شوال / ١٠</option>
+            <option value="11">ذو القعدة / ١١</option>
+            <option value="12">ذو الحجة / ١٢</option>
+        </select><br>
+        <label for="year">سال: </label><input type="number" name="year"><br>
+    </fieldset>
+    <script>
+const now = new Date();
+gregorian.elements['day'].value = now.getDate();
+gregorian.elements['month'].value = now.getMonth() + 1;
+gregorian.elements['year'].value = now.getFullYear(); 
+
+const PI = Math.PI;
+const abs = Math.abs;
+const ceil = Math.ceil;
+const cos = Math.cos;
+const floor = Math.floor;
+const min = Math.min;
+const pow = Math.pow;
+const round = Math.round;
+const sign = Math.sign;
+const sin = Math.sin;
+const tan = Math.tan;
+
+class AlgorithmicConverter {
+    /** The value of x shifted into the range [a..b). Returns x if a=b. */
+    static #mod3(x, a, b) {
+        return a === b ? x : a + (x - a) % (b - a);
+    }
+
+    /** Sum powers of x with coefficients (from order 0 up) in list a. */
+    static #poly(indeterminate, coefficients) {
+        let sum = coefficients[0];
+        let indeterminateRaised = 1.0;
+        for (let i = 1; i < coefficients.length; i++) {
+            indeterminateRaised *= indeterminate;
+            sum += coefficients[i] * indeterminateRaised;
+        }
+        return sum;
+    }
+
+    /**
+     * Identity function for fixed dates/moments. If internal
+     * timekeeping is shifted, change epoch to be RD date of
+     * origin of internal count. epoch should be an integer.
+     */
+    static #rd(tee) {
+        const epoch = 0;
+        return tee - epoch;
+    }
+
+    // Fixed date of start of the (proleptic) Gregorian calendar.
+    static #GREGORIAN_EPOCH = this.#rd(1);
+
+    /**
+     * True if g_year is a leap year on the Gregorian calendar.
+     */
+    static #gregorianLeapYear(gYear) {
+        return gYear % 4 === 0 && (gYear % 400 === 100 || gYear % 400 === 200 || gYear % 400 === 300 ? false : true);
+    }
+
+    /** Fixed date equivalent to the Gregorian date g_date. */
+    static fixedFromGregorian(year, month, day) {
+        return (this.#GREGORIAN_EPOCH - 1 + // Days before start of calendar
+            365 * (year - 1) + // Ordinary days since epoch
+            Math.floor((year - 1) / 4) - // Julian leap days since epoch...
+            Math.floor((year - 1) / 100) + // ...minus century years since epoch...
+            Math.floor((year - 1) / 400) + // plus years since epoch divisible by 400.
+            // Days in prior months this year assuming 30-day Feb
+            Math.floor((367 * month - 362) / 12) +
+            // Correct for 28- or 29-day Feb
+            (month <= 2 ? 0 : this.#gregorianLeapYear(year) ? -1 : -2) +
+            day); // Days so far this month.
+    }
+
+    /** Gregorian year corresponding to the fixed date. */
+    static #gregorianYearFromFixed(date) {
+        const d0 = date - this.#GREGORIAN_EPOCH; // Prior days.
+        const n400 = Math.floor(d0 / 146097); // Completed 400-year cycles.
+        const d1 = d0 % 146097; // Prior days not in n400.
+        const n100 = Math.floor(d1 / 36524); // 100-year cycles not in n400.
+        const d2 = d1 % 36524; // Prior days not in n400 or n100.
+        const n4 = Math.floor(d2 / 1461); // 4-year cycles not in n400 or n100.
+        const d3 = d2 % 1461; // Prior days not in n400, n100, or n4.
+        const n1 = Math.floor(d3 / 365); // Years not in n400, n100, or n4.
+        const year = 400 * n400 + 100 * n100 + 4 * n4 + n1;
+        return n100 === 4 || n1 === 4 ? year : year + 1;
+    }
+
+    /** Fixed date of January 1 in g_year. */
+    static #gregorianNewYear(gYear) {
+        return this.fixedFromGregorian(gYear, 1, 1);
+    }
+
+    /** Gregorian (year, month, day) corresponding to fixed date. */
+    static gregorianFromFixed(date) {
+        const year = this.#gregorianYearFromFixed(date);
+        const priorDays = date - this.#gregorianNewYear(year); // This year
+        // To simulate a 30-day Feb
+        const correction = date < this.fixedFromGregorian(year, 3, 1) ? 0 : this.#gregorianLeapYear(year) ? 1 : 2;
+        const month = Math.floor((12 * (priorDays + correction) + 373) / 367); // Assuming a 30-day Feb
+        // Calculate the day by subtraction.
+        const day = date - this.fixedFromGregorian(year, month, 1) + 1;
+        return [year, month, day];
+    }
+
+    /** Number of days from Gregorian date g_date1 until g_date2. */
+    static #gregorianDateDifference(year1, month1, day1, year2, month2, day2) {
+        return this.fixedFromGregorian(year2, month2, day2) - this.fixedFromGregorian(year1, month1, day1);
+    }
+
+    // Fixed date of start of the Julian calendar.
+    static #JULIAN_EPOCH = this.fixedFromGregorian(0, 12, 30);
+
+    /** True if j_year is a leap year on the Julian calendar. */
+    static #julianLeapYear(jYear) {
+        return (jYear % 4) === (jYear > 0 ? 0 : 3);
+    }
+
+    /** Fixed date equivalent to the Julian date. */
+    static fixedFromJulian(year, month, day) {
+        const y = year < 0 ? year + 1 : year; // No year zero
+        return (this.#JULIAN_EPOCH - 1 + // Days before start of calendar
+            365 * (y - 1) + // Ordinary days since epoch.
+            Math.floor((y - 1) / 4) + // Leap days since epoch...
+            // Days in prior months this year...
+            Math.floor((367 * month - 362) / 12) + // ...assuming 30-day Feb
+            // Correct for 28- or 29-day Feb
+            (month <= 2 ? 0 : this.#julianLeapYear(year) ? -1 : -2) +
+            day); // Days so far this month.
+    }
+
+    /** True if jYear is a leap year on the Julian calendar. */
+    static #isJulianLeapYear(jYear) {
+        return jYear % 4 === (jYear > 0 ? 0 : 3);
+    }
+
+    /** Julian (year month day) corresponding to fixed $date$. */
+    static julianFromFixed(date) {
+        // Nominal year.
+        const approx = Math.floor((4 * (date - this.#JULIAN_EPOCH) + 1464) / 1461.0);
+        const year = approx <= 0 ? approx - 1 : approx; // No year 0.
+
+        // This year
+        const priorDays = date - this.fixedFromJulian(year, 1, 1);
+
+        // To simulate a 30-day Feb
+        const correction = date < this.fixedFromJulian(year, 3, 1) ? 0 : this.#isJulianLeapYear(year) ? 1 : 2;
+
+        // Assuming a 30-day Feb
+        const month = Math.floor((12 * (priorDays + correction) + 373) / 367.0);
+
+        // Calculate the day by subtraction.
+        const day = 1 + (date - this.fixedFromJulian(year, month, 1));
+
+        return [year, month, day];
+    }
+
+    /** x hours. */
+    static #hr(x) {
+        return x / 24.0;
+    }
+
+    /** d degrees, m arcminutes, s arcseconds. */
+    static #angle(d, m, s) {
+        return d + (m + s / 60) / 60.0;
+    }
+
+    /** Convert angle theta from degrees to radians. */
+    static #radiansFromDegrees(theta) {
+        return (theta % 360) * PI / 180;
+    }
+
+    /** Sine of theta (given in degrees). */
+    static #sinDegrees(theta) {
+        return sin(this.#radiansFromDegrees(theta));
+    }
+
+    /** Cosine of theta (given in degrees). */
+    static #cosDegrees(theta) {
+        return cos(this.#radiansFromDegrees(theta));
+    }
+
+    /** Tangent of theta (given in degrees). */
+    static #tanDegrees(theta) {
+        return tan(this.#radiansFromDegrees(theta));
+    }
+
+    /**
+     * Difference between UT and local mean time at longitude
+     * phi as a fraction of a day.
+     */
+    static #zoneFromLongitude(phi) {
+        return phi / 360;
+    }
+
+    /** Universal time from local tee_ell at location */
+    static #universalFromLocal(teeEll, longitude) {
+        return teeEll - this.#zoneFromLongitude(longitude);
+    }
+
+    /** Local time from sundial time tee at location. */
+    static #localFromApparent(tee, longitude) {
+        return tee - this.#equationOfTime(this.#universalFromLocal(tee, longitude));
+    }
+
+    /** Universal time from sundial time tee at location */
+    static #universalFromApparent(tee, longitude) {
+        return this.#universalFromLocal(this.#localFromApparent(tee, longitude), longitude);
+    }
+
+    /** Universal time on fixed date of midday at location */
+    static #midday(date, longitude) {
+        return this.#universalFromApparent(date + this.#hr(12), longitude);
+    }
+
+    /** Julian centuries since 2000 at moment tee. */
+    static #julianCenturies(tee) {
+        return (this.#dynamicalFromUniversal(tee) - this.#J2000) / 36525;
+    }
+
+    static #obliquityCooefficients = [
+        0.0,
+        this.#angle(0, 0, -46.8150),
+        this.#angle(0, 0, -0.00059),
+        this.#angle(0, 0, 0.001813),
+    ];
+
+    /** Obliquity of ecliptic at moment tee. */
+    static #obliquity(tee) {
+        const c = this.#julianCenturies(tee);
+        return this.#angle(23, 26, 21.448) + this.#poly(c, this.#obliquityCooefficients);
+    }
+
+    /** Dynamical time at Universal moment tee_rom_u. */
+    static #dynamicalFromUniversal(teeRomU) {
+        return teeRomU + this.#ephemerisCorrection(teeRomU);
+    }
+
+    // Noon at start of Gregorian year 2000.
+    static #J2000 = this.#hr(12) + this.#gregorianNewYear(2000);
+
+    static #MEAN_TROPICAL_YEAR = 365.242189;
+
+    static #c2006Coefficients = [62.92, 0.32217, 0.005589];
+    static #c1987Coefficients = [
+        63.86, 0.3345, -0.060374,
+        0.0017275,
+        0.000651814, 0.00002373599
+    ];
+    static #c1900Coefficients = [
+        -0.00002, 0.000297, 0.025184,
+        -0.181133, 0.553040, -0.861938,
+        0.677066, -0.212591
+    ];
+    static #c1800Coefficients = [
+        -0.000009, 0.003844, 0.083563,
+        0.865736,
+        4.867575, 15.845535, 31.332267,
+        38.291999, 28.316289, 11.636204,
+        2.043794
+    ];
+    static #c1700Coefficients = [
+        8.118780842, -0.005092142,
+        0.003336121, -0.0000266484
+    ];
+    static #c1600Coefficients = [
+        120.0, -0.9808, -0.01532,
+        0.000140272128
+    ];
+    static #c500Coefficients = [
+        1574.2, -556.01, 71.23472, 0.319781,
+        -0.8503463, -0.005050998,
+        0.0083572073
+    ];
+    static #c0Coefficients = [
+        10583.6, -1014.41, 33.78311,
+        -5.952053, -0.1798452, 0.022174192,
+        0.0090316521
+    ];
+    static #otherCoefficients = [-20.0, 0.0, 32.0];
+
+    /**
+     * Dynamical Time minus Universal Time (in days) for moment tee.
+     *
+     * Adapted from "Astronomical Algorithms"
+     * by Jean Meeus, Willmann-Bell (1991) for years
+     * 1600-1986 and from polynomials on the NASA
+     * Eclipse web site for other years.
+     */
+    static #ephemerisCorrection(tee) {
+        const year = this.#gregorianYearFromFixed(Math.floor(tee));
+        if (2051 <= year && year <= 2150) {
+            return (-20 + 32 * Math.pow((year - 1820) / 100.0, 2) + 0.5628 * (2150 - year)) / 86400;
+        } else if (2006 <= year && year <= 2050) {
+            const y2000 = year - 2000;
+            return this.#poly(y2000, this.#c2006Coefficients) / 86400;
+        } else if (1987 <= year && year <= 2005) {
+            const y2000 = year - 2000;
+            return this.#poly(y2000, this.#c1987Coefficients) / 86400;
+        } else if (1900 <= year && year <= 1986) {
+            const c = this.#gregorianDateDifference(1900, 1, 1, year, 7, 1) / 36525.0;
+            return this.#poly(c, this.#c1900Coefficients);
+        } else if (1800 <= year && year <= 1899) {
+            const c = this.#gregorianDateDifference(1900, 1, 1, year, 7, 1) / 36525.0;
+            return this.#poly(c, this.#c1800Coefficients);
+        } else if (1700 <= year && year <= 1799) {
+            const y1700 = year - 1700;
+            return this.#poly(y1700, this.#c1700Coefficients) / 86400;
+        } else if (1600 <= year && year <= 1699) {
+            const y1600 = year - 1600;
+            return this.#poly(y1600, this.#c1600Coefficients) / 86400;
+        } else if (500 <= year && year <= 1599) {
+            const y1000 = (year - 1000) / 100.0;
+            return this.#poly(y1000, this.#c500Coefficients) / 86400;
+        } else if (-500 < year && year < 500) {
+            const y0 = year / 100.0;
+            return this.#poly(y0, this.#c0Coefficients) / 86400;
+        } else {
+            const y1820 = (year - 1820) / 100.0;
+            return this.#poly(y1820, this.#otherCoefficients) / 86400;
+        }
+    }
+
+    static #lamdaCoefficient = [280.46645, 36000.76983, 0.0003032];
+    static #anamolyCoefficients = [357.52910, 35999.05030, -0.0001559, -0.00000048];
+    static #eccentricityCoefficients = [0.016708617, -0.000042037, -0.0000001236];
+    /**
+     * Equation of time (as fraction of day) for moment tee.
+     *
+     * Adapted from "Astronomical Algorithms" by Jean Meeus,
+     * Willmann-Bell, 2nd edn., 1998, p. 185.
+     */
+    static #equationOfTime(tee) {
+        const c = this.#julianCenturies(tee);
+        const lamda = this.#poly(c, this.#lamdaCoefficient);
+        const anomaly = this.#poly(c, this.#anamolyCoefficients);
+        const eccentricity = this.#poly(c, this.#eccentricityCoefficients);
+        const varepsilon = this.#obliquity(tee);
+        const y = Math.pow(this.#tanDegrees(varepsilon / 2), 2);
+        const equation = ((1.0 / 2 / PI) *
+            (y * this.#sinDegrees(2 * lamda) -
+                2 * eccentricity * this.#sinDegrees(anomaly) +
+                4 * eccentricity * y * this.#sinDegrees(anomaly) *
+                this.#cosDegrees(2 * lamda) -
+                0.5 * y * y * this.#sinDegrees(4 * lamda) -
+                1.25 * eccentricity * eccentricity *
+                this.#sinDegrees(2 * anomaly)));
+        return sign(equation) * min(abs(equation), this.#hr(12));
+    }
+
+    static #solarLongitudeCoefficients = [
+        403406, 195207, 119433, 112392, 3891, 2819, 1721,
+        660, 350, 334, 314, 268, 242, 234, 158, 132, 129, 114,
+        99, 93, 86, 78, 72, 68, 64, 46, 38, 37, 32, 29, 28, 27, 27,
+        25, 24, 21, 21, 20, 18, 17, 14, 13, 13, 13, 12, 10, 10, 10,
+        10
+    ];
+    static #solarLongitudeMultipliers = [
+        0.9287892, 35999.1376958, 35999.4089666,
+        35998.7287385, 71998.20261, 71998.4403,
+        36000.35726, 71997.4812, 32964.4678,
+        -19.4410, 445267.1117, 45036.8840, 3.1008,
+        22518.4434, -19.9739, 65928.9345,
+        9038.0293, 3034.7684, 33718.148, 3034.448,
+        -2280.773, 29929.992, 31556.493, 149.588,
+        9037.750, 107997.405, -4444.176, 151.771,
+        67555.316, 31556.080, -4561.540,
+        107996.706, 1221.655, 62894.167,
+        31437.369, 14578.298, -31931.757,
+        34777.243, 1221.999, 62894.511,
+        -4442.039, 107997.909, 119.066, 16859.071,
+        -4.578, 26895.292, -39.127, 12297.536,
+        90073.778
+    ];
+    static #solarLongitudeAddends = [
+        270.54861, 340.19128, 63.91854, 331.26220,
+        317.843, 86.631, 240.052, 310.26, 247.23,
+        260.87, 297.82, 343.14, 166.79, 81.53,
+        3.50, 132.75, 182.95, 162.03, 29.8,
+        266.4, 249.2, 157.6, 257.8, 185.1, 69.9,
+        8.0, 197.1, 250.4, 65.3, 162.7, 341.5,
+        291.6, 98.5, 146.7, 110.0, 5.2, 342.6,
+        230.9, 256.1, 45.3, 242.9, 115.2, 151.8,
+        285.3, 53.3, 126.6, 205.7, 85.9,
+        146.1
+    ];
+    /**
+     * Longitude of sun at moment tee.
+     *
+     * Adapted from "Planetary Programs and Tables from -4000
+     * to +2800" by Pierre Bretagnon and Jean-Louis Simon,
+     * Willmann-Bell, 1986.
+     */
+    static #solarLongitude(tee) {
+        const c = this.#julianCenturies(tee); // moment in Julian centuries
+        let sum = 0;
+        for (let i = 0; i < this.#solarLongitudeCoefficients.length; i++) {
+            sum += this.#solarLongitudeCoefficients[i] * this.#sinDegrees(
+                this.#solarLongitudeAddends[i] + this.#solarLongitudeMultipliers[i] * c
+            );
+        }
+        const lamda = (282.7771834 +
+            36000.76953744 * c +
+            0.000005729577951308232 * sum);
+        return (lamda + this.#aberration(tee) + this.#nutation(tee)) % 360.0;
+    }
+
+    static #nutationCoefficientA = [124.90, -1934.134, 0.002063];
+    static #nutationCoefficientB = [201.11, 72001.5377, 0.00057];
+    /** Longitudinal nutation at moment tee. */
+    static #nutation(tee) {
+        const c = this.#julianCenturies(tee); // moment in Julian centuries
+        const capA = this.#poly(c, this.#nutationCoefficientA);
+        const capB = this.#poly(c, this.#nutationCoefficientB);
+        return -0.004778 * this.#sinDegrees(capA) - 0.0003667 * this.#sinDegrees(capB);
+    }
+
+    /** Aberration at moment tee. */
+    static #aberration(tee) {
+        const c = this.#julianCenturies(tee); // moment in Julian centuries
+        return 0.0000974 * this.#cosDegrees(177.63 + 35999.01848 * c) - 0.005575;
+    }
+
+    // Longitude of sun at vernal equinox.
+    static #SPRING = 0.0;
+
+    /**
+     * Approximate moment at or before tee
+     * when solar longitude just exceeded lamda degrees.
+     */
+    static #estimatePriorSolarLongitude(lamda, tee) {
+        const rate = this.#MEAN_TROPICAL_YEAR / 360; // Mean change of one degree.
+        // First approximation.
+        let tau = tee - rate * ((this.#solarLongitude(tee) - lamda) % 360.0);
+        const capDelta = this.#mod3((this.#solarLongitude(tau) - lamda), -180, 180);
+        return min(tee, tau - rate * capDelta);
+    }
+
+    // Fixed date of start of the Persian calendar.
+    static #PERSIAN_EPOCH = this.fixedFromJulian(622, 3, 19);
+
+    // Location of Tehran, Iran.
+    // Specifically location of "Dar ul-Funun", https://w.wiki/DjPM
+    static #TEHRAN = [35.683789, 51.421864, 1100.0, +3.5];
+
+    // Middle of Iran.
+    static #IRAN = [35.5, 52.5, 0.0, +3.5];
+
+    /** Fixed date of Astronomical Persian New Year on or before fixed date. */
+    static persianNewYearOnOrBefore(date, longitude) {
+        // Approximate time of equinox.
+        const approx = this.#estimatePriorSolarLongitude(this.#SPRING, this.#midday(date, longitude));
+        let day = Math.floor(approx) - 1;
+        while (this.#solarLongitude(this.#midday(day, longitude)) > this.#SPRING + 2) day += 1;
+        return day;
+    }
+
+    /** Fixed date of Borji Persian new month on or before fixed date. */
+    static persianBorjiNewMonthOnOrBefore(date, month, longitude) {
+        // Approximate time of equinox.
+        const targetLong = (month - 1) * 30.0;
+        const approx = this.#estimatePriorSolarLongitude(targetLong, this.#midday(date, longitude));
+        let day = Math.floor(approx) - 1;
+        while (true) {
+            const solarLong = this.#solarLongitude(this.#midday(day, longitude));
+            if ((targetLong + 2 > solarLong && solarLong >= targetLong)) break;
+            day += 1;
+        }
+        return day;
+    }
+
+    /** Fixed date of Astronomical Persian date p_date. */
+    static fixedFromPersian(year, month, day, longitude) {
+        const newYear = this.persianNewYearOnOrBefore(
+            this.#PERSIAN_EPOCH + 180 + // Fall after epoch.
+                Math.floor(
+                    this.#MEAN_TROPICAL_YEAR *
+                    (0 < year ? year - 1 : year)
+                ),
+            longitude
+        ); // No year zero.
+        return (newYear - 1 + // Days in prior years.
+            // Days in prior months this year.
+            (month <= 7 ? 31 * (month - 1) : 30 * (month - 1) + 6) +
+            day); // Days so far this month.
+    }
+
+    /** Fixed date of Borji Persian date p_date. */
+    static fixedFromPersianBorji(year, month, day, longitude) {
+        const newMonth = this.persianBorjiNewMonthOnOrBefore(
+            this.#PERSIAN_EPOCH + 180 +
+                Math.floor(
+                    this.#MEAN_TROPICAL_YEAR *
+                    ((0 < year ? year - 1 : year) + (month - 1) / 12.0)
+                ),
+            month,
+            longitude
+        );
+        return (newMonth - 1 + // Days in prior months.
+            day); // Days so far this month.
+    }
+
+    /** Astronomical Persian date corresponding to fixed date. */
+    static persianFromFixed(date, longitude) {
+        const newYear = this.persianNewYearOnOrBefore(date, longitude);
+        const y = round((newYear - this.#PERSIAN_EPOCH) / this.#MEAN_TROPICAL_YEAR) + 1;
+        const year = 0 < y ? y : y - 1; // No year zero
+        const dayOfYear = date - this.fixedFromPersian(year, 1, 1, longitude) + 1;
+        const month =
+            dayOfYear <= 186 ? Math.ceil(dayOfYear / 31.0) :
+                Math.ceil((dayOfYear - 6) / 30.0);
+        // Calculate the day by subtraction
+        const day = date - this.fixedFromPersian(year, month, 1, longitude) + 1;
+        return [year, month, day];
+    }
+
+    /** Borji Persian date corresponding to fixed date. */
+    static persianBorjiFromFixed(date, longitude) {
+        const newYear = this.persianNewYearOnOrBefore(date, longitude);
+        const y = round((newYear - this.#PERSIAN_EPOCH) / this.#MEAN_TROPICAL_YEAR) + 1;
+        const year = 0 < y ? y : y - 1; // No year zero
+        let month = 1;
+        while (month < 12 && date >= this.fixedFromPersianBorji(year, month + 1, 1, longitude)) {
+            month += 1;
+        }
+        // Calculate the day by subtraction
+        const day = date - this.fixedFromPersianBorji(year, month, 1, longitude) + 1;
+        return [year, month, day];
+    }
+
+    /** Fixed date of Persian New Year (Nowruz) in Gregorian year g_year. */
+    static #nowruz(gYear, longitude) {
+        const persianYear = gYear - this.#gregorianYearFromFixed(this.#PERSIAN_EPOCH) + 1;
+        const y = persianYear <= 0 ? persianYear - 1 : persianYear; // No Persian year 0
+        return this.fixedFromPersian(y, 1, 1, longitude);
+    }
+
+    /** True if year is a leap year on the Persian calendar. */
+    static persianLeapYear(year, longitude) {
+        const thisNowruz = this.fixedFromPersian(year, 1, 1, longitude);
+        const nextNowruz = this.fixedFromPersian(year + 1, 1, 1, longitude);
+        return nextNowruz - thisNowruz === 366;
+    }
+
+    static #OFFSET_JDN = 1721425;
+    static #START_OF_MODERN_ERA_JDN = 2424231; // PersianDate(1304, 1, 1).toJdn()
+    static #START_OF_MODERN_ERA_YEAR = 1304;
+    static fromJdn(jdn) {
+        const isModernEra = jdn >= this.#START_OF_MODERN_ERA_JDN;
+        const fixed = jdn - this.#OFFSET_JDN;
+        const longitude = (isModernEra ? this.#IRAN : this.#TEHRAN)[1];
+        return isModernEra ? this.persianFromFixed(fixed, longitude) :
+            this.persianBorjiFromFixed(fixed, longitude);
+    }
+
+    static toJdn(year, month, dayOfMonth) {
+        const isModernEra = year >= this.#START_OF_MODERN_ERA_YEAR;
+        const longitude = (isModernEra ? this.#IRAN : this.#TEHRAN)[1];
+        const fixed = isModernEra ? this.fixedFromPersian(year, month, dayOfMonth, longitude) :
+            this.fixedFromPersianBorji(year, month, dayOfMonth, longitude);
+        return fixed + this.#OFFSET_JDN;
+    }
+
+    static civilToJdn(year, month, dayOfMonth) {
+        return this.#OFFSET_JDN + (
+            (year > 1582) ||
+                ((year === 1582) && (month > 10)) ||
+                ((year === 1582) && (month === 10) && (dayOfMonth > 14)) ?
+                this.fixedFromGregorian(year, month, dayOfMonth) :
+                this.fixedFromJulian(year, month, dayOfMonth)
+        );
+    }
+
+    static civilFromJdn(jdn) {
+        const fixed = jdn - this.#OFFSET_JDN;
+        return jdn > 2299160 ? this.gregorianFromFixed(fixed) : this.julianFromFixed(fixed);
+    }
+}
+    </script>
+</body>
+
+</html>
